@@ -10,7 +10,8 @@ function ThemeProvider({
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="system"
+      defaultTheme="light"
+      storageKey="video-streaming-theme"
       enableSystem
       disableTransitionOnChange
       {...props}
