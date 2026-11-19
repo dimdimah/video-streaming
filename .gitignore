@@ -45,3 +45,4 @@ next-env.d.ts
 # uploads & storage
 /storage/*
 !/storage/.gitkeep
+!/storage/**/.gitkeep

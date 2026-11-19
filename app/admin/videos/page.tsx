@@ -17,6 +17,7 @@ export default async function AdminVideosPage() {
       fileSize: video.fileSize,
       sourceType: video.sourceType,
       youtubeUrl: video.youtubeUrl,
+      thumbnailPath: video.thumbnailPath,
       createdAt: video.createdAt,
     })
     .from(video)

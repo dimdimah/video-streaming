@@ -61,6 +61,7 @@ export const video = sqliteTable("video", {
   mimeType: text("mimeType").notNull(),
   sourceType: text("sourceType").notNull().default("file"), // "file" | "youtube"
   youtubeUrl: text("youtubeUrl"), // URL embed, hanya bila sourceType=youtube
+  thumbnailPath: text("thumbnailPath"), // path relatif storage/thumbnails/<id>.<ext>
   createdBy: text("createdBy").references(() => user.id, { onDelete: "set null" }),
   createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),

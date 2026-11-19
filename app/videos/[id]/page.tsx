@@ -74,7 +74,8 @@ export default async function VideoDetailPage({
             <video
               controls
               preload="metadata"
-              className="aspect-video w-full rounded-3xl border border-border/80 bg-black shadow-md"
+              poster={`/api/videos/${row.id}/thumbnail`}
+              className="aspect-video w-full rounded-3xl border border-border/80 bg-black shadow-md object-contain"
               src={`/api/videos/${row.id}/play`}
             >
               Browser Anda tidak mendukung pemutaran video.

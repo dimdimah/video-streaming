@@ -1,7 +1,7 @@
 import { createClient } from "@libsql/client"
 
 /** Skrip untuk memastikan tabel ada di SQLite lokal (local.db). Idempotent. */
-async function main() {
+export async function setupDatabase() {
   const raw = process.env.DATABASE_URL ?? "./local.db"
   const url = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `file:${raw}`
   const libsql = createClient({ url })
@@ -89,6 +89,7 @@ async function main() {
       "mimeType" TEXT NOT NULL DEFAULT 'video/mp4',
       "sourceType" TEXT NOT NULL DEFAULT 'file',
       "youtubeUrl" TEXT,
+      "thumbnailPath" TEXT,
       "createdBy" TEXT,
       "createdAt" INTEGER NOT NULL,
       "updatedAt" INTEGER NOT NULL,
@@ -97,6 +98,7 @@ async function main() {
   `)
   await exec(`ALTER TABLE "video" ADD COLUMN "sourceType" TEXT NOT NULL DEFAULT 'file'`)
   await exec(`ALTER TABLE "video" ADD COLUMN "youtubeUrl" TEXT`)
+  await exec(`ALTER TABLE "video" ADD COLUMN "thumbnailPath" TEXT`)
 
   await exec(`
     CREATE TABLE IF NOT EXISTS "video_access" (
@@ -116,10 +118,12 @@ async function main() {
   await exec(`CREATE INDEX IF NOT EXISTS "video_access_user_video_idx" ON "video_access"("userId", "videoId")`)
 
   await libsql.close()
-  console.log("✓ Tabel siap di", url)
 }
 
-main().catch((err) => {
-  console.error("✗ Gagal memastikan tabel:", err)
-  process.exit(1)
-})
+const isMain = process.argv[1]?.includes("setup-db")
+if (isMain) {
+  setupDatabase().catch((err) => {
+    console.error("✗ Gagal memastikan tabel:", err)
+    process.exit(1)
+  })
+}

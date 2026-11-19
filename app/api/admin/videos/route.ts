@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto"
 import { getApiUser } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { video } from "@/lib/schema"
-import { saveVideoFile } from "@/lib/storage"
+import { deleteThumbnailFile, saveThumbnailFile, saveVideoFile } from "@/lib/storage"
 
 function parseYouTubeId(url: string): string | null {
   const m = url.match(
@@ -32,10 +32,23 @@ export async function POST(request: Request) {
   const id = randomUUID()
   const now = new Date()
 
+  // Simpan thumbnail jika disertakan (gambar kustom atau frame awal video)
+  const thumbnailFile = form.get("thumbnail")
+  let thumbnailPath: string | null = null
+  if (thumbnailFile instanceof File && thumbnailFile.size > 0) {
+    try {
+      const savedThumb = await saveThumbnailFile(id, thumbnailFile)
+      thumbnailPath = savedThumb.filePath
+    } catch {
+      // Abaikan jika gagal menyimpan thumbnail
+    }
+  }
+
   if (sourceType === "youtube") {
     const url = typeof form.get("youtubeUrl") === "string" ? (form.get("youtubeUrl") as string).trim() : ""
     const videoId = parseYouTubeId(url)
     if (!videoId) {
+      if (thumbnailPath) await deleteThumbnailFile(thumbnailPath)
       return NextResponse.json({ error: "URL YouTube tidak valid" }, { status: 400 })
     }
     const embed = `https://www.youtube.com/embed/${videoId}`
@@ -48,6 +61,7 @@ export async function POST(request: Request) {
       mimeType: "video/youtube",
       sourceType: "youtube",
       youtubeUrl: embed,
+      thumbnailPath,
       createdBy: admin.id,
       createdAt: now,
       updatedAt: now,
@@ -57,6 +71,7 @@ export async function POST(request: Request) {
 
   const file = form.get("file")
   if (!(file instanceof File)) {
+    if (thumbnailPath) await deleteThumbnailFile(thumbnailPath)
     return NextResponse.json({ error: "File video wajib dipilih" }, { status: 400 })
   }
 
@@ -64,6 +79,7 @@ export async function POST(request: Request) {
   try {
     saved = await saveVideoFile(id, file)
   } catch (err) {
+    if (thumbnailPath) await deleteThumbnailFile(thumbnailPath)
     return NextResponse.json({ error: err instanceof Error ? err.message : "Upload gagal" }, { status: 400 })
   }
 
@@ -76,6 +92,7 @@ export async function POST(request: Request) {
       fileSize: saved.fileSize,
       mimeType: saved.mimeType,
       sourceType: "file",
+      thumbnailPath,
       createdBy: admin.id,
       createdAt: now,
       updatedAt: now,
@@ -83,6 +100,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const { deleteVideoFile } = await import("@/lib/storage")
     await deleteVideoFile(saved.filePath)
+    if (thumbnailPath) await deleteThumbnailFile(thumbnailPath)
     return NextResponse.json({ error: err instanceof Error ? err.message : "Gagal menyimpan" }, { status: 500 })
   }
 

@@ -1,4 +1,6 @@
 import { Bricolage_Grotesque, Work_Sans, Geist_Mono } from "next/font/google"
+import { headers } from "next/headers"
+import { getCurrentSession } from "@/lib/auth"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -23,11 +25,15 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const headerList = await headers()
+  const session = await getCurrentSession(headerList).catch(() => null)
+  const initialUser = session?.user ?? null
+
   return (
     <html
       lang="id"
@@ -47,13 +53,13 @@ export default function RootLayout({
             <nav className="pointer-events-auto h-16 border border-border/80 bg-background/70 backdrop-blur-md rounded-full flex items-center justify-between max-w-6xl mx-auto px-6 shadow-xs">
               <Link href="/" className="flex items-center gap-2 group">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-base shadow-xs group-hover:scale-105 transition-transform">
-                  V
+                  G
                 </span>
                 <span className="font-bricolage font-bold text-lg tracking-tight text-foreground">
-                  Video<span className="text-primary">Stream</span>
+                  gate<span className="text-primary">k</span>
                 </span>
               </Link>
-              <AuthNav />
+              <AuthNav initialUser={initialUser} />
             </nav>
           </header>
 

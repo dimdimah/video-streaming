@@ -13,11 +13,10 @@ const SEED = [
   { name: "Customer Test", email: "customer@test.com", password: "password123", role: "customer" },
 ] as const
 
-async function main() {
+export async function seedDatabase() {
   for (const s of SEED) {
     const existing = await db.select().from(user).where(eq(user.email, s.email)).limit(1)
     if (existing[0]) {
-      console.log(`= skip ${s.email} (sudah ada, role=${existing[0].role})`)
       continue
     }
 
@@ -41,13 +40,18 @@ async function main() {
       createdAt: now,
       updatedAt: now,
     })
-    console.log(`✓ ${s.role.padEnd(8)} ${s.email} / ${s.password}`)
   }
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error("✗ Seed gagal:", err)
-    process.exit(1)
-  })
+const isMain = process.argv[1]?.includes("seed")
+if (isMain) {
+  seedDatabase()
+    .then(() => {
+      console.log("✓ Seed selesai")
+      process.exit(0)
+    })
+    .catch((err) => {
+      console.error("✗ Seed gagal:", err)
+      process.exit(1)
+    })
+}

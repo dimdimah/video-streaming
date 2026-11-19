@@ -9,6 +9,12 @@ import { AnimatedMarqueeHero } from "@/components/ui/hero-3"
 
 export const dynamic = "force-dynamic"
 
+export const metadata = {
+  title: "gatek — Temani Makanmu Sambil Nonton",
+  description:
+    "Biar makan nggak sepi dan makin lahap. Buka gerbang tontonan favoritmu dengan satu klik di Gatek.",
+}
+
 export default async function HomePage() {
   const headerList = await headers()
   const session = await getCurrentSession(headerList).catch(() => null)
@@ -17,59 +23,32 @@ export default async function HomePage() {
   const videos = await db.select().from(video).orderBy(desc(video.createdAt))
 
   return (
-    <div className="relative mx-auto w-full max-w-6xl px-4 pb-16">
+    <div className="relative -mt-24 -mb-16 h-[100dvh] w-full overflow-hidden flex flex-col justify-center">
       <AnimatedMarqueeHero
-        tagline="Katalog video dengan izin tonton bertempo"
-        title="Unggah video, pilih siapa yang boleh menonton, tentukan sampai kapan."
-        description="Satu tempat untuk file MP4/WebM dan link YouTube. Customer mengajukan akses, admin menyetujui dengan durasi 1–720 jam, dan player hanya mengirim byte setelah izin dicek."
+        title="Gatek temani makanmu sambil nonton video pilihan."
+        description="Biar makan nggak sepi dan makin lahap. Buka gerbang tontonan favoritmu dengan satu klik, nikmati streaming lancar selama santap hidangan."
         items={videos}
       >
-        {!user && (
-          <>
-            <Link href="/auth/register">
-              <Button size="lg" className="h-12 rounded-full px-7 text-base font-medium shadow-xs">
-                Daftar Akun
-              </Button>
-            </Link>
-            <Link href="/auth/login">
-              <Button
-                size="lg"
-                variant="secondary"
-                className="h-12 rounded-full px-7 text-base font-medium"
-              >
-                Masuk
-              </Button>
-            </Link>
-          </>
-        )}
-        {user?.role === "customer" && (
-          <>
-            <Link href="/videos">
-              <Button size="lg" className="h-12 rounded-full px-7 text-base font-medium shadow-xs">
-                Katalog Video
-              </Button>
-            </Link>
-            <Link href="/requests">
-              <Button
-                size="lg"
-                variant="secondary"
-                className="h-12 rounded-full px-7 text-base font-medium"
-              >
-                Permintaan Saya
-              </Button>
-            </Link>
-          </>
-        )}
-        {user?.role === "admin" && (
-          <Link href="/admin">
-            <Button size="lg" className="h-12 rounded-full px-7 text-base font-medium shadow-xs">
-              Panel Admin Dashboard
-            </Button>
-          </Link>
-        )}
+        <Link href="/katalog">
+          <Button
+            size="lg"
+            className="h-12 rounded-full px-8 text-base font-medium shadow-xs hover:bg-primary/90 active:scale-[0.98] transition-all"
+          >
+            Pilih Tontonan
+          </Button>
+        </Link>
         {user && (
           <p className="w-full text-xs font-medium text-muted-foreground">
-            Masuk sebagai <span className="text-foreground">{user.name}</span> ({user.role})
+            Masuk sebagai <span className="text-foreground font-semibold">{user.name}</span> ({user.role})
+            {user.role === "admin" && (
+              <>
+                {" "}
+                &middot;{" "}
+                <Link href="/admin" className="underline hover:text-primary">
+                  Buka Dashboard Admin
+                </Link>
+              </>
+            )}
           </p>
         )}
       </AnimatedMarqueeHero>

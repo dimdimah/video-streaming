@@ -1,102 +1,127 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
-export function AuthNav() {
+interface AuthNavProps {
+  initialUser?: {
+    id: string
+    name: string
+    role: string
+  } | null
+}
+
+export function AuthNav({ initialUser = null }: AuthNavProps) {
   const router = useRouter()
-  const [session, setSession] = useState<{ user: { id: string; name: string; role: string } } | null>(null)
-  const [isPending, setIsPending] = useState(true)
+  const pathname = usePathname()
+  const { data: sessionData, isPending } = authClient.useSession()
 
+  // Ambil user dari useSession() react store, fallback ke initialUser dari SSR
+  const activeUser =
+    (sessionData?.user as unknown as { id: string; name: string; role: string } | undefined) ??
+    initialUser
+
+  const [currentUser, setCurrentUser] = useState<typeof activeUser>(activeUser)
+
+  // Sinkronkan currentUser saat sessionData atau initialUser berubah
   useEffect(() => {
-    let mounted = true
+    if (sessionData?.user) {
+      setCurrentUser(sessionData.user as unknown as { id: string; name: string; role: string })
+    } else if (sessionData === null && !isPending) {
+      setCurrentUser(null)
+    } else if (initialUser) {
+      setCurrentUser(initialUser)
+    }
+  }, [sessionData, isPending, initialUser])
 
-    // Ambil sesi setelah mount (render awal netral → tidak ada mismatch hidrasi).
-    fetch("/api/auth/get-session", {
-      credentials: "include",
-      headers: { Accept: "application/json" },
-    })
-      .then(async (res) => {
-        if (!res.ok) return null
-        const data = await res.json()
-        // better-auth get-session mengembalikan { session, user } (user tidak
-        // nested di session). Bentuk lama data.session.user membuat
-        // "Cannot read properties of undefined (reading 'role')".
-        if (!data?.session || !data?.user) return null
-        return { user: data.user as { id: string; name: string; role: string } }
-      })
-      .then((s) => {
-        if (mounted) {
-          setSession(s ?? null)
-          setIsPending(false)
+  // Setiap kali URL/pathname berubah (misal redirect setelah login), refresh session client
+  useEffect(() => {
+    authClient
+      .getSession()
+      .then((res) => {
+        if (res.data?.user) {
+          setCurrentUser(res.data.user as unknown as { id: string; name: string; role: string })
+        } else if (res.data === null) {
+          setCurrentUser(null)
         }
       })
-      .catch(() => {
-        if (mounted) setIsPending(false)
-      })
-
-    return () => {
-      mounted = false
-    }
-  }, [])
+      .catch(() => {})
+  }, [pathname])
 
   async function handleSignOut() {
     await authClient.signOut()
+    setCurrentUser(null)
     router.push("/")
     router.refresh()
   }
 
-  // Selama pending, tampilkan netral (hanya tautan masuk/daftar) agar HTML
-  // server dan render klien awal identik → tidak ada error hidrasi.
-  if (isPending) {
+  // Jika sudah terotentikasi (sebagai admin atau customer)
+  if (currentUser) {
     return (
-      <div className="flex items-center gap-2">
-        <Link href="/auth/login" className="text-sm font-medium">
-          Masuk
+      <div className="flex items-center gap-2.5 sm:gap-3 text-sm">
+        <Link
+          href="/katalog"
+          className="font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Katalog
         </Link>
-        <Link href="/auth/register" className="text-sm font-medium underline underline-offset-4">
-          Daftar
-        </Link>
-      </div>
-    )
-  }
-
-  if (session) {
-    return (
-      <div className="flex items-center gap-3">
-        {session.user.role === "admin" ? (
-          <Link href="/admin" className="text-sm font-medium hover:text-foreground">
+        {currentUser.role === "admin" ? (
+          <Link
+            href="/admin"
+            className="font-medium text-foreground hover:text-primary transition-colors"
+          >
             Dashboard
           </Link>
         ) : (
           <>
-            <Link href="/videos" className="text-sm font-medium hover:text-foreground">
-              Video
+            <Link
+              href="/videos"
+              className="font-medium text-foreground hover:text-primary transition-colors"
+            >
+              Video Saya
             </Link>
-            <Link href="/requests" className="text-sm font-medium hover:text-foreground">
+            <Link
+              href="/requests"
+              className="font-medium text-foreground hover:text-primary transition-colors"
+            >
               Permintaan
             </Link>
           </>
         )}
-        <span className="text-sm text-muted-foreground">
-          {session.user.name} &middot; <span className="font-semibold capitalize">{session.user.role}</span>
-        </span>
-        <Button variant="outline" size="sm" onClick={handleSignOut}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSignOut}
+          className="rounded-full h-8 px-3 text-xs border-border/80 hover:bg-neutral-100 transition-all cursor-pointer"
+        >
           Keluar
         </Button>
       </div>
     )
   }
 
+  // Jika belum login / tamu
   return (
-    <div className="flex items-center gap-2">
-      <Link href="/auth/login" className="text-sm font-medium">
+    <div className="flex items-center gap-3 text-sm">
+      <Link
+        href="/katalog"
+        className="font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        Katalog
+      </Link>
+      <Link
+        href="/auth/login"
+        className="font-medium text-foreground hover:text-primary transition-colors"
+      >
         Masuk
       </Link>
-      <Link href="/auth/register" className="text-sm font-medium underline underline-offset-4">
+      <Link
+        href="/auth/register"
+        className="font-medium text-primary hover:underline underline-offset-4 transition-colors"
+      >
         Daftar
       </Link>
     </div>

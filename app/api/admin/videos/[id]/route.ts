@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm"
 import { getApiUser } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { video } from "@/lib/schema"
-import { deleteVideoFile, saveVideoFile } from "@/lib/storage"
+import { deleteThumbnailFile, deleteVideoFile, saveThumbnailFile, saveVideoFile } from "@/lib/storage"
 
 function parseYouTubeId(url: string): string | null {
   const m = url.match(
@@ -40,6 +40,18 @@ export async function PUT(request: Request, { params }: Params) {
 
   const sourceType = form.get("sourceType") === "youtube" ? "youtube" : "file"
 
+  // Simpan thumbnail baru jika ada
+  const thumbnailFile = form.get("thumbnail")
+  let newThumbnailPath: string | undefined = undefined
+  if (thumbnailFile instanceof File && thumbnailFile.size > 0) {
+    try {
+      const savedThumb = await saveThumbnailFile(id, thumbnailFile)
+      newThumbnailPath = savedThumb.filePath
+    } catch {
+      // Abaikan jika gagal
+    }
+  }
+
   if (sourceType === "youtube") {
     const url = typeof form.get("youtubeUrl") === "string" ? (form.get("youtubeUrl") as string).trim() : ""
     const videoId = parseYouTubeId(url)
@@ -55,6 +67,7 @@ export async function PUT(request: Request, { params }: Params) {
         filePath: "",
         fileSize: 0,
         mimeType: "video/youtube",
+        ...(newThumbnailPath ? { thumbnailPath: newThumbnailPath } : {}),
         updatedAt: new Date(),
       })
       .where(eq(video.id, id))
@@ -80,12 +93,21 @@ export async function PUT(request: Request, { params }: Params) {
         filePath: saved.filePath,
         fileSize: saved.fileSize,
         mimeType: saved.mimeType,
+        ...(newThumbnailPath ? { thumbnailPath: newThumbnailPath } : {}),
         updatedAt: new Date(),
       })
       .where(eq(video.id, id))
     if (existing.sourceType === "file") await deleteVideoFile(existing.filePath)
   } else {
-    await db.update(video).set({ title, description, updatedAt: new Date() }).where(eq(video.id, id))
+    await db
+      .update(video)
+      .set({
+        title,
+        description,
+        ...(newThumbnailPath ? { thumbnailPath: newThumbnailPath } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(video.id, id))
   }
 
   return NextResponse.json({ ok: true })
@@ -104,5 +126,6 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   await db.delete(video).where(eq(video.id, id))
   await deleteVideoFile(existing.filePath)
+  if (existing.thumbnailPath) await deleteThumbnailFile(existing.thumbnailPath)
   return NextResponse.json({ ok: true })
 }
